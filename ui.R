@@ -1,11 +1,11 @@
 ##==============================================================================
-## CARREGA PACOTES
+## LOAD PACKAGES
 ##==============================================================================
 if (!require("install.load")) install.packages("install.load")
 install.load::install_load("tidyverse", "stringr", "RODBC", "DT", "xts", "shinydashboard", "shiny", "dygraphs")
 
 ##==============================================================================
-## ACESSA O BANCO DO IPEADATA
+## CONNECT TO IPEADATA DATABASE AND RUN SOME QUERIES
 ##==============================================================================
 ipeadata <- odbcConnect("ipeadata", uid="", pwd="")
 
@@ -19,17 +19,16 @@ db_source <- sqlQuery(ipeadata, "select FNTNOME_P from FONTES")
 db_period <- sqlQuery(ipeadata, "select PERNOME_P from PERIODICIDADES")
 
 ##==============================================================================
-## USER-INTERFACE DO APLICATIVO
+## USER-INTERFACE
 ##==============================================================================
 dashboardPage(
     dashboardHeader(
-        title = "Validação de dados"
+        title = "ipeadata Dashboard"
         ),
     dashboardSidebar(
     sidebarMenu(
         menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
-        menuItem("Inputs", tabName = "inputs",
-                 icon = icon("bar-chart-o"),
+        menuItem("Inputs", tabName = "inputs", icon = icon("bar-chart-o"),
                  selectInput("subject",
                              "Tema",
                              c("", as.character(db_subject$CATNOME)),
@@ -50,7 +49,19 @@ dashboardPage(
                              c("", as.character(db_name$SERCODIGO)),
                              selected = "",
                              multiple = FALSE)
+                 # uiOutput("newinputs")
                  ),
+        conditionalPanel(
+            condition = "input.subject == 'Regional' | input.subject == 'Social'",
+            selectInput("geolevel", "Escolha o nível geográfico", 
+                        choices = c("Brasil", "Regiões", "Estados")),
+            selectInput("geoscope", "Escolha a abragência", 
+                        choices = c("Brasil", "Regiões", "Estados")),
+            selectInput("time_start", "Início", 
+                        choices = c(as.character(c(1970:2016)))),
+            selectInput("time_end", "Fim", 
+                        choices = c(as.character(c(1970:2016))))
+        ),
         menuItem("Series atrasadas", tabName = "atrasadas", icon = icon("database"))
     )
 ),

@@ -1,30 +1,11 @@
 ##==============================================================================
-## CARREGA PACOTES
+## INSTALL AND LOAD PACKAGES
 ##==============================================================================
 if (!require("install.load")) install.packages("install.load")
 install.load::install_load("tidyverse", "stringr", "RODBC", "DT", "xts", "shinydashboard", "shiny", "dygraphs")
 
 ##==============================================================================
-## ACESSA O BANCO DO IPEADATA
-##==============================================================================
-# ipeadata <- odbcConnect("ipeadata", uid="", pwd="")
-# 
-# db <- sqlQuery((odbcConnect("ipeadata",uid="",pwd="")),
-#                (paste0("SELECT ipea.vw_Valor.SERCODIGO,
-#                        CAST (ipea.vw_Valor.VALDATA as NUMERIC) as VALDATA, ipea.vw_Valor.VALVALOR
-#                        FROM ipea.vw_Valor
-#                        WHERE (((ipea.vw_Valor.SERCODIGO)='VALOR366_GLOBAL40V366' and
-#                        ipea.vw_Valor.VALVALOR IS NOT NULL))
-#                        order by VALDATA;")))
-
-# get_dbnames <- function(){
-#     sqlQuery(ipeadata, "select distinct SERCODIGO from ipea.vw_Valor")
-# }
-
-# db_names <- sqlQuery(ipeadata, "select distinct SERCODIGO from ipea.vw_Valor")
-
-##==============================================================================
-## SERVER DO APLICATIVO
+## SERVER
 ##==============================================================================
 
 shinyServer(function(input, output, session) {
@@ -163,7 +144,35 @@ shinyServer(function(input, output, session) {
             tbl_df %>% 
             left_join(., db_per, by = c("SERCODIGO" = "SERCODIGOTROLL")) %>% 
             mutate(VALDATA = as.Date(VALDATA, origin = "1900-01-01"),
-                   VALMISSING = ifelse(PERID==1, mondf(VALDATA[1], VALDATA[nrow(db)])-length(which(!is.na(db$VALVALOR)))+1, NA))
+                   VALDATA = str_sub(strptime(VALDATA, format = "%Y-%m-%d"), 1, 10),
+                   VALMISSING = ifelse(PERID==-15, 
+                                       round(as.integer(difftime(VALDATA[nrow(db)], VALDATA[1], units = "weeks")), 0)/2-length(which(!is.na(db$VALVALOR)))+1,
+                                       ifelse(
+                                           PERID==-1, 
+                                           round(as.integer(difftime(VALDATA[nrow(db)], VALDATA[1], units = "days")), 0)-length(which(!is.na(db$VALVALOR)))+1,
+                                       ifelse(
+                                           PERID==12,
+                                           round(as.integer(difftime(VALDATA[nrow(db)], VALDATA[1], units = "days"))/365, 0)-length(which(!is.na(db$VALVALOR)))+1,
+                                           ifelse(
+                                               PERID==1,
+                                               as.integer((difftime(VALDATA[nrow(db)], VALDATA[1], units = "days")/365)*12)-length(which(!is.na(db$VALVALOR)))+1,
+                                               ifelse(
+                                                   PERID==3,
+                                                   round((as.integer(difftime(VALDATA[nrow(db)], VALDATA[1], units = "days"))/365)*4, 0)-length(which(!is.na(db$VALVALOR)))+1,
+                                                   ifelse(
+                                                       PERID==6,
+                                                       round((as.integer(difftime(VALDATA[nrow(db)], VALDATA[1], units = "days"))/365)*2, 0)-length(which(!is.na(db$VALVALOR)))+1,
+                                                       ifelse(
+                                                           PERID==48,
+                                                           round(as.integer(difftime(VALDATA[nrow(db)], VALDATA[1], units = "days"))/1460, 0)-length(which(!is.na(db$VALVALOR)))+1,
+                                                           ifelse(
+                                                               PERID==60,
+                                                               round(as.integer(difftime(VALDATA[nrow(db)], VALDATA[1], units = "days"))/1825, 0)-length(which(!is.na(db$VALVALOR)))+1,
+                                                               ifelse(
+                                                                   PERID==120,
+                                                                   round(as.integer(difftime(VALDATA[nrow(db)], VALDATA[1], units = "days"))/3650, 0)-length(which(!is.na(db$VALVALOR)))+1,
+                                                                   NA))))))))))
+                                       # VALMISSING = ifelse(PERID==1, mondf(VALDATA[1], VALDATA[nrow(db)])-length(which(!is.na(db$VALVALOR)))+1, NA))
         
         valueBox(
             ifelse(input$idserie=="", "Nenhum", db$VALMISSING[1]),

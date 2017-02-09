@@ -10,13 +10,15 @@ db_subject <- sqlQuery(ipeadata, "select CATID, CATNOME from CATALOGO")
 db_source <- sqlQuery(ipeadata, "select FNTID, FNTNOME_P from FONTES")
 db_period <- sqlQuery(ipeadata, "select PERID, PERNOME_P from PERIODICIDADES")
 db_tert <- sqlQuery(ipeadata, "SELECT TERCODIBGE, TERNOME, TNIVID FROM dbo.TERRITORIO")
+db_nivel <- sqlQuery(ipeadata, "select TNIVID, TNIVNOME from TIPONIVEL")
 db_tert <- db_tert %>% 
-    # tbl_df %>% 
-    mutate(ID_GEOLEVEL = as.factor(ifelse(TNIVID==0, "Brasil",
-                                ifelse(TNIVID==1, "Regioes",
-                                       ifelse(TNIVID==2, "Estados",
-                                              ifelse(TNIVID==5, "Municipios", 
-                                                     NA)))))) %>% 
+    tbl_df %>%
+    left_join(., db_nivel) %>% 
+    # mutate(ID_GEOLEVEL = as.factor(ifelse(TNIVID==0, "Brasil",
+    #                             ifelse(TNIVID==1, "Regioes",
+    #                                    ifelse(TNIVID==2, "Estados",
+    #                                           ifelse(TNIVID==5, "Municipios", 
+    #                                                  NA)))))) %>% 
     select(-TNIVID)
 
 db_metadata <- db_metadata %>% 
@@ -42,14 +44,16 @@ shinyServer(function(input, output, session) {
         if(!is.null(input$idserie))
             {
             db_ter <- sqlQuery(ipeadata, "SELECT TERCODIBGE, TERNOME, TNIVID FROM dbo.TERRITORIO")
+            db_nivel <- sqlQuery(ipeadata, "select TNIVID, TNIVNOME from TIPONIVEL")
             db_ter <- db_ter %>% 
                 filter(!(TERCODIBGE==0 & !TERNOME=="Brasil"), !duplicated(TERCODIBGE)) %>% 
                 mutate(TERCODIBGE = as.character(TERCODIBGE)) %>% 
-                mutate(ID_GEOLEVEL = as.factor(ifelse(TNIVID==0, "Brasil",
-                                                      ifelse(TNIVID==1, "Regioes",
-                                                             ifelse(TNIVID==2, "Estados",
-                                                                    ifelse(TNIVID==5, "Municipios", 
-                                                                           NA)))))) %>% 
+                left_join(., db_nivel) %>% 
+                # mutate(ID_GEOLEVEL = as.factor(ifelse(TNIVID==0, "Brasil",
+                #                                       ifelse(TNIVID==1, "Regioes",
+                #                                              ifelse(TNIVID==2, "Estados",
+                #                                                     ifelse(TNIVID==5, "Municipios", 
+                #                                                            NA)))))) %>% 
                 data.frame
             
             db_serie <- sqlQuery(ipeadata, sprintf("SELECT ipea.vw_Valor.SERCODIGO, ipea.vw_Valor.TERCODIGO,
@@ -58,11 +62,13 @@ shinyServer(function(input, output, session) {
                     WHERE (((ipea.vw_Valor.SERCODIGO)='%s'))",
                                  input$idserie)) 
             
-            db_serie %>% 
+            db_serie <- db_serie %>% 
                 tbl_df %>% 
                 # data.frame %>% 
                 mutate(TERCODIGO = as.character(TERCODIGO)) %>%
                 left_join(., db_ter, by = c("TERCODIGO" = "TERCODIBGE"))
+            
+            return(db_serie)
                 
             
             # sprintf("SELECT val.SERCODIGO, val.TERCODIGO, ter.TERCODIBGE, ter.TERNOME,
@@ -90,47 +96,98 @@ shinyServer(function(input, output, session) {
 #           }
     
     observe({
+        # if(input$idserie==""){
         updateSelectInput(session, "subject", label = "Tema", 
-                          choices = c("", levels(db_metadata$CATNOME)),
-                          selected = "")})
+                          choices = c(levels(db_metadata$CATNOME)),
+                          selected = db_metadata$CATNOME[1])
+            # }
+        })
+    
+    # observe({
+    #     # if(input$idserie==""){
+    #       updateSelectInput(session, "src", label = "Fonte", 
+    #                         choices = c("", levels(db_metadata$FNTNOME_P)),
+    #                         selected = "")
+    #     # }
+    #     })
     
     observe({
-          updateSelectInput(session, "src", label = "Fonte", 
-                            choices = c("", levels(db_metadata$FNTNOME_P)),
-                            selected = "")})
-    
-    observe({
+        if(input$idserie==""){
           db_metadata1 <- droplevels(subset(db_metadata, grepl(input$subject, db_metadata$CATNOME)))
           updateSelectInput(session, "src", label = "Fonte", 
                             choices = levels(db_metadata1$FNTNOME_P),
-                            selected = "")})
+                            selected = "")
+        }
+        
+        # if(!input$idserie==""){
+        #     db_metadata1 <- droplevels(subset(db_metadata, grepl(input$subject, db_metadata$CATNOME)))
+        #     updateSelectInput(session, "src", label = "Fonte", 
+        #                       choices = levels(db_metadata1$FNTNOME_P),
+        #                       selected = levels(db_metadata$FNTNOME_P[db_metadata$SERCODIGOTROLL==input$idserie]))
+        # }
+        
+        })
     
     observe({
+        # if(input$idserie==""){
           updateSelectInput(session, "period", label = "Periodicidade", 
                             choices = c("", levels(db_metadata$PERNOME_P)),
-                            selected = "")})
+                            selected = "")
+        # }
+            })
     
     observe({
+        # if(input$idserie==""){
           db_metadata1 <- droplevels(subset(db_metadata, grepl(input$subject, db_metadata$CATNOME) & grepl(input$src, db_metadata$FNTNOME_P)))
           updateSelectInput(session, "period", label = "Periodicidade", 
                             choices = levels(db_metadata1$PERNOME_P),
-                            selected = "")})
+                            selected = "")
+        # }
+          })
     
     observe({
           updateSelectInput(session, "idserie", label = "ID da serie", 
                             choices = c("", levels(db_metadata$SERCODIGOTROLL)),
-                            selected = "")})
+                            selected = "")
+    })
     
     observe({
+        # if(input$idserie==""){
           db_metadata1 <- droplevels(subset(db_metadata, grepl(input$subject, db_metadata$CATNOME) & grepl(input$src, db_metadata$FNTNOME_P) & grepl(input$period, db_metadata$PERNOME_P)))
           updateSelectInput(session, "idserie", label = "ID da serie", 
                             choices = levels(db_metadata1$SERCODIGOTROLL),
-                            selected = "")})
+                            selected = "")
+          # }
+        })
+    
     
     observe({
         updateSelectInput(session, "geolevel", label = "Escolha o nivel geografico", 
-                          choices = c("", levels(db_tert$ID_GEOLEVEL)),
+                          choices = c("", levels(factor(statement()$TNIVNOME))),
                           selected = "")})
+    
+    # output$src <- renderUI({
+    #     data_src <- NULL
+    #     if(!is.null(input$idserie)){
+    #         data_src <- db_metadata$FNTNOME_P[db_metadata$SERCODIGOTROLL==input$idserie]
+    #         return(data_src)}
+    #     selectInput('src', 'Fonte', levels(factor(db_metadata$FNTNOME_P)), selected = data_src, width = "100%")
+    # })
+    
+    # observe({
+    #     updateSelectInput(session, "src", label = "Fonte", 
+    #                       choices = c("", levels(db_metadata$FNTNOME_P)),
+    #                       selected = db_metadata$FNTNOME_P[db_metadata$SERCODIGOTROLL==input$idserie])})
+    # 
+    # observe({
+    #     updateSelectInput(session, "period", label = "Periodicidade", 
+    #                       choices = c("", levels(db_metadata$PERNOME_P)),
+    #                       selected = db_metadata$PERNOME_P[db_metadata$SERCODIGOTROLL==input$idserie])})
+    # 
+    # observe({
+    #     updateSelectInput(session, "subject", label = "Tema", 
+    #                       choices = c("", levels(db_metadata$CATNOME)),
+    #                       selected = db_metadata$CATNOME[db_metadata$SERCODIGOTROLL==input$idserie])})
     
 
 output$plot_title <- renderText({ 
@@ -164,7 +221,7 @@ output$plot_title <- renderText({
         # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
         db <- statement()
         db <- db %>% 
-            select(-TERNOME, -TERCODIGO, -ID_GEOLEVEL, -TNIVID, -SERCODIGO) %>% 
+            select(-TERNOME, -TERCODIGO, -TNIVNOME, -TNIVID, -SERCODIGO) %>% 
             setNames(tolower(names(.))) %>% 
             mutate(valdata = as.Date(valdata, origin = "1900-01-01"))
         
@@ -185,16 +242,16 @@ output$plot_title <- renderText({
             db <- statement()
             db <- db %>%
                 tbl_df %>%
-                filter(ID_GEOLEVEL==input$geolevel) %>%
+                filter(TNIVNOME==input$geolevel) %>%
                 select(VALDATA, VALVALOR, TERNOME) %>%
                 mutate(VALDATA = as.Date(VALDATA, origin = "1900-01-01")) %>%
                 dcast(., VALDATA ~ TERNOME, value.var = "VALVALOR")
 
-            return(xts(db, order.by = as.Date(db$VALDATA, format = "%Y-%m-%d")) %>%
+            return(xts(db[-1], order.by = as.Date(db$VALDATA, format = "%Y-%m-%d")) %>%
                        dygraph %>%
-                       # dyLegend(show = "follow") %>%
+                       dyLegend(show = "follow") %>%
                        dyRangeSelector() %>%
-                       # dySeries("Brasil", label = "Brasil", drawPoints = TRUE) %>%
+                       dySeries(drawPoints = TRUE) %>%
                        dyOptions(connectSeparatedPoints = FALSE))
             }
                
@@ -208,12 +265,26 @@ output$plot_title <- renderText({
     })
     
     output$tb1 <- DT::renderDataTable({
+        
         # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
         db <- statement()
         db <- db %>%
-            select(-TERCODIGO, -TNIVID, -ID_GEOLEVEL, -TERNOME) %>% 
+            select(-TERCODIGO, -TNIVID, -TNIVNOME, -TERNOME) %>% 
             mutate(VALDATA = as.Date(VALDATA, origin = "1900-01-01"))
-    })
+        
+        return(db)
+        
+        
+        if(!input$geolevel==""){
+            # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
+            db_geo <- statement()
+            db_geo <- db_geo %>%
+                filter(TNIVNOME==input$geolevel) %>%
+                select(-TERCODIGO, -TNIVID, -TNIVNOME, -TERNOME) %>% 
+                mutate(VALDATA = as.Date(VALDATA, origin = "1900-01-01"))
+            return(db_geo)
+        }
+        })
 
     output$tb2 <- DT::renderDataTable({
     db2 <- sqlQuery(channel = ipeadata,
@@ -321,3 +392,4 @@ output$plot_title <- renderText({
         
         })
     })
+    

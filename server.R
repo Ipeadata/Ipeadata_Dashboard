@@ -112,12 +112,12 @@ shinyServer(function(input, output, session) {
     #     })
     
     observe({
-        if(input$idserie==""){
+        # if(input$idserie==""){
           db_metadata1 <- droplevels(subset(db_metadata, grepl(input$subject, db_metadata$CATNOME)))
           updateSelectInput(session, "src", label = "Fonte", 
                             choices = levels(db_metadata1$FNTNOME_P),
                             selected = "")
-        }
+        # }
         
         # if(!input$idserie==""){
         #     db_metadata1 <- droplevels(subset(db_metadata, grepl(input$subject, db_metadata$CATNOME)))
@@ -214,11 +214,12 @@ output$plot_title <- renderText({
     
     output$db_plot <- renderDygraph({
         
-        validate(
-            need(input$idserie, "Por favor, selecione uma base de dados."))
-        
         if(input$subject=="Macroeconômico"){
-        # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
+        
+              validate(
+                    need(input$idserie, "Por favor, selecione uma base de dados."))
+              
+              # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
         db <- statement()
         db <- db %>% 
             select(-TERNOME, -TERCODIGO, -TNIVNOME, -TNIVID, -SERCODIGO) %>% 
@@ -237,7 +238,7 @@ output$plot_title <- renderText({
         if(input$subject=="Regional" | input$subject=="Social"){
 
             validate(
-                need(input$geolevel, "Por favor, selecione uma base de dados."))
+                need(input$geolevel, "Por favor, selecione o nivel geografico e a abragencia."))
 
             db <- statement()
             db <- db %>%
@@ -265,18 +266,27 @@ output$plot_title <- renderText({
     })
     
     output$tb1 <- DT::renderDataTable({
-        
-        # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
+          
+          
+          if(input$subject=="Macroeconômico"){
+                
+                # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
         db <- statement()
         db <- db %>%
             select(-TERCODIGO, -TNIVID, -TNIVNOME, -TERNOME) %>% 
             mutate(VALDATA = as.Date(VALDATA, origin = "1900-01-01"))
         
         return(db)
+          }
         
+        if((input$subject=="Regional" | input$subject=="Social") & input$geolevel==""){
+              
+              return()
+        }
         
         if(!input$geolevel==""){
-            # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
+              
+              # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
             db_geo <- statement()
             db_geo <- db_geo %>%
                 filter(TNIVNOME==input$geolevel) %>%

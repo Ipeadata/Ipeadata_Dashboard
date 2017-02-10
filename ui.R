@@ -19,7 +19,33 @@ install.load::install_load("tidyverse", "stringr", "RODBC", "DT", "xts", "shinyd
                                       
 dashboardPage(
       skin = "blue",
-      dashboardHeader(title = "ipeadata Dashboard"),
+      dashboardHeader(title = "ipeadata Dashboard",
+                      dropdownMenu(type = "messages",
+                                   messageItem(
+                                         from = "Erivelton Guedes",
+                                         message = "A parte de séries foi corrigida."
+                                   ),
+                                   messageItem(
+                                         from = "Support",
+                                         message = "Novas funcionalidades em desenv.",
+                                         icon = icon("life-ring"),
+                                         time = "10/02/2017"
+                                   )
+                      ),
+                      dropdownMenu(type = "notifications",
+                                   notificationItem(
+                                         text = "9 séries atualizadas",
+                                         icon("check-square-o")
+                                   )),
+                      dropdownMenu(type = "tasks", badgeStatus = "success",
+                                   taskItem(value = 90, color = "green",
+                                            "Atualização de séries"
+                                   ),
+                                   taskItem(value = 55, color = "yellow",
+                                            "Correção de valores suspeitos"
+                                   )
+                      )),
+      
       # dbHeader,
 #       dashboardHeader(
 #             title = "ipeadata Dashboard"
@@ -91,6 +117,8 @@ dashboardPage(
                                     solidHeader = T, status = "primary",
                                     helpText("Clique e arraste o cursor no gráfico para aproximar e selecionar períodos de tempo. O duplo clique no gráfico retorna para a visualização inicial."),
                                     dygraphOutput("db_plot", height = "400px")),
+                                box(title = "Mapa - Selecione uma base de dados", "", width = 12,
+                                    solidHeader = T, status = "primary"),
                                 box(title = textOutput("table_title"), "", width = 12, 
                                     solidHeader = T, status = "primary",
                                     DT::dataTableOutput("tb1", height = "300px")                

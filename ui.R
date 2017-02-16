@@ -52,38 +52,65 @@ dashboardPage(
       
       dashboardSidebar(
             width = 250,
-            sidebarMenu(
+            sidebarMenu(id = "sbm",
                   menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
-                  menuItem("Inputs", tabName = "inputs", icon = icon("bar-chart-o"),
-                           selectInput("subject",
-                                       "Tema",
-                                       "",
-                                       # c("", levels(db_metadata$CATNOME)),
-                                       selected = "",
-                                       multiple = FALSE),
-                           selectInput("src",
-                                       "Fonte",
-                                       "",
-                                       # c("", levels(db_metadata$FNTNOME_P)),
-                                       selected = "",
-                                       multiple = FALSE),
-                           selectInput("period",
-                                       "Periodicidade",
-                                       "",
-                                       # c("", levels(db_metadata$PERNOME_P)),
-                                       selected = "",
-                                       multiple = FALSE),
-                           selectInput("idserie",
-                                       "ID da série",
-                                       "",
-                                       # c("", levels(db_metadata$SERCODIGOTROLL)),
-                                       selected = "",
-                                       multiple = FALSE)
-                           # uiOutput("secondSelection")
-                           # uiOutput("newinputs")
-                  ),
                   conditionalPanel(
-                        condition = "input.subject == 'Regional' | input.subject == 'Social'",
+                      condition = "input.sbm == 'seriesExplorer'",
+                      selectInput("subject",
+                                  "Tema",
+                                  "",
+                                  # c("", levels(db_metadata$CATNOME)),
+                                  selected = "",
+                                  multiple = FALSE),
+                      selectInput("src",
+                                  "Fonte",
+                                  "",
+                                  # c("", levels(db_metadata$FNTNOME_P)),
+                                  selected = "",
+                                  multiple = FALSE),
+                      selectInput("period",
+                                  "Periodicidade",
+                                  "",
+                                  # c("", levels(db_metadata$PERNOME_P)),
+                                  selected = "",
+                                  multiple = FALSE),
+                      selectInput("idserie",
+                                  "ID da série",
+                                  "",
+                                  # c("", levels(db_metadata$SERCODIGOTROLL)),
+                                  selected = "",
+                                  multiple = FALSE)
+                  ),
+                  # menuItem("Explorar", tabName = "inputs", icon = icon("bar-chart-o"),
+                           # selectInput("subject",
+                           #             "Tema",
+                           #             "",
+                           #             # c("", levels(db_metadata$CATNOME)),
+                           #             selected = "",
+                           #             multiple = FALSE),
+                           # selectInput("src",
+                           #             "Fonte",
+                           #             "",
+                           #             # c("", levels(db_metadata$FNTNOME_P)),
+                           #             selected = "",
+                           #             multiple = FALSE),
+                           # selectInput("period",
+                           #             "Periodicidade",
+                           #             "",
+                           #             # c("", levels(db_metadata$PERNOME_P)),
+                           #             selected = "",
+                           #             multiple = FALSE),
+                           # selectInput("idserie",
+                           #             "ID da série",
+                           #             "",
+                           #             # c("", levels(db_metadata$SERCODIGOTROLL)),
+                           #             selected = "",
+                           #             multiple = FALSE)
+                  #          # uiOutput("secondSelection")
+                  #          # uiOutput("newinputs")
+                  # ),
+                  conditionalPanel(
+                        condition = "input.sbm == 'seriesExplorer' & input.subject == 'Regional' | input.subject == 'Social'",
                         # selectInput("geolevel", "Escolha o nível geográfico", 
                         #             choices = c("Brasil", "Regiões", "Estados", "Municípios")),
                         selectInput("geolevel", 
@@ -102,6 +129,7 @@ dashboardPage(
                         selectInput("time_end", "Fim", 
                                     choices = c(as.character(c(1970:2016))))
                   ),
+                  menuItem("Explorar séries", tabName = "seriesExplorer", icon = icon("line-chart")),
                   menuItem("Séries atrasadas", tabName = "lateseries", icon = icon("database")),
                   menuItem("Github Repo", href="https://github.com/Ipeadata/shiny-app-validation", icon = icon("github")),
                   menuItem("Sobre", tabName = "about", icon = icon("info-circle"))
@@ -110,12 +138,35 @@ dashboardPage(
       ),
       dashboardBody(
             tabItems(
-                  tabItem(tabName = "dashboard",
-                          h2("Estatísticas relevantes"),
+                tabItem(tabName = "dashboard",
+                        fluidRow(
+                            column(width = 8, includeMarkdown("intro_dashboard.md")),
+                            column(width = 4, includeHTML("intro_logo.html"))
+                        )
+                        ),
+                tabItem(tabName = "seriesExplorer",
+                        h2("Lista de séries disponíveis"),
+                        fluidRow(
+                            box(
+                                title = "Tabela Teste",  
+                                width = 12,
+                                status = "primary",
+                                DT::dataTableOutput("tb3")
+                            )
+                            ),
+                        h2("Metadados da série selecionada"),
+                        fluidRow(
+                            box(title = textOutput("plot_title2"),
+                                width = 12,
+                                solidHeader = T, status = "primary", 
+                                htmlOutput("db_metadata"))
+                        ),
+                        h2("Estatísticas relevantes"),
                           fluidRow(
-                                valueBoxOutput("db_nrows"),
-                                valueBox("Nenhum", tags$b("Valores suspeitos"), color = "red", icon = icon("exclamation")),
-                                valueBoxOutput("db_missing")
+                                valueBoxOutput("db_nrows", width = 3),
+                                valueBox("--", tags$b("Valores suspeitos"), color = "red", icon = icon("exclamation"), width = 3),
+                                valueBoxOutput("db_nzero", width = 3),
+                                valueBoxOutput("db_missing", width = 3)
                           ),
                           h2("Visualização dos dados"),
                           fluidRow(

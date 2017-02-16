@@ -135,12 +135,12 @@ shinyServer(function(input, output, session) {
         }
         })
     
-    output$serie_periodicidade <- renderText({
-        
-        if(!input$idserie==""){
-        paste("Fonte:", db_metadata$FNTNOME_P[db_metadata$SERCODIGOTROLL==input$idserie])
-        }
-        })
+    # output$serie_periodicidade <- renderText({
+    #     
+    #     if(!input$idserie==""){
+    #     paste("Fonte:", db_metadata$FNTNOME_P[db_metadata$SERCODIGOTROLL==input$idserie])
+    #     }
+    #     })
     
     
     # observe({
@@ -221,7 +221,44 @@ output$plot_title <- renderText({
                  as.character(db_title$SERNOME_P)
                  )
           })
+
+output$plot_title2 <- renderText({ 
     
+    db_title <- sqlQuery(channel = ipeadata, sprintf("SELECT SERNOME_P
+                            FROM SERIES WHERE SERCODIGOTROLL='%s';", input$idserie))
+    
+    ifelse(input$idserie=="", 
+           "Selecione uma série histórica",
+           as.character(db_title$SERNOME_P)
+    )
+})
+
+output$db_metadata <- renderUI({ 
+    
+    db_descr <- sqlQuery(channel = ipeadata, sprintf("SELECT SERNOTAMETOD_P FROM SERIES WHERE SERCODIGOTROLL='%s';", input$idserie))
+    db_source <- as.character(db_metadata$FNTNOME_P[db_metadata$SERCODIGOTROLL==input$idserie])
+    db_period <- as.character(db_metadata$PERNOME_P[db_metadata$SERCODIGOTROLL==input$idserie])
+    db_atual <- sqlQuery(channel = ipeadata, sprintf("SELECT SERATUALIZACAO
+                                                     FROM SERIES WHERE SERCODIGOTROLL='%s';", input$idserie))
+    db_atual <- paste(str_sub(db_atual$SERATUALIZACAO, 6, 7), str_sub(db_atual$SERATUALIZACAO, 9, 10), str_sub(db_atual$SERATUALIZACAO, 1, 4), sep = "/")
+    # db_unid <- sqlQuery(channel = ipeadata, sprintf("SELECT UNIID FROM SERIES WHERE SERCODIGOTROLL='%s';", "ANP_XPET"))
+    # db_unid <- sqlQuery(channel = ipeadata, "SELECT UNINOME_P FROM UNIDADES WHERE UNIID='%int';", as.factor(db_unid$UNIID))
+
+    # ifelse(input$idserie=="",
+           # "Selecione uma série histórica",
+           HTML(paste(paste(strong("Frequência:"), db_period),
+                      paste(strong("Fonte:"), db_source), 
+                      # paste(strong("Unidade:"), db_unid$UNINOME_P), 
+                      paste(strong("Comentário:"), db_descr$SERNOTAMETOD_P),
+                      paste(strong("Atualizado em:"), db_atual),
+                      sep = "<br/>"))
+    
+})
+
+# https://github.com/MarkEdmondson1234/ga-dashboard-demo/blob/master/ui.R
+# https://mark.shinyapps.io/GA-dashboard-demo/
+
+
     output$table_title <- renderText({ 
           
           db_title <- sqlQuery(channel = ipeadata, sprintf("SELECT SERNOME_P
@@ -321,6 +358,20 @@ output$plot_title <- renderText({
             return(datatable(db_geo, options = list(width = 12, pageLength = 12), rownames= FALSE, filter = 'top'))
             }
         })
+    
+    output$tb3 <- DT::renderDataTable({
+        # Nome da série, Unidade, Freq., Período
+        db_metadata <- sqlQuery(ipeadata, "select distinct SERCODIGOTROLL, SERNOME_P, CATID, PERID, FNTID, UNIID from dbo.SERIES")
+        db_unid <- sqlQuery(ipeadata, "SELECT UNIID, UNINOME_P FROM UNIDADES")
+        db_period <- sqlQuery(ipeadata, "select PERID, PERNOME_P from PERIODICIDADES")
+        db <- db_metadata %>% 
+            tbl_df %>% 
+            left_join(., db_unid) %>% 
+            left_join(., db_period) %>% 
+            select(Nome= SERNOME_P, Unidade = UNINOME_P, Periodicidade = PERNOME_P)
+        return(datatable(db, options = list(width = 12, pageLength = 10), rownames= FALSE, filter = 'top', selection = "single"))
+        })
+    
 
     output$tb2 <- DT::renderDataTable({
     db2 <- sqlQuery(channel = ipeadata,
@@ -360,10 +411,25 @@ output$plot_title <- renderText({
             mutate(valdata = as.Date(valdata, origin = "1900-01-01"))
         
     valueBox(
-        ifelse(input$idserie=="", "Nenhuma", nrow(db)),
+        ifelse(input$idserie=="", "--", nrow(db)),
         tags$b("Observacoes"),
         icon = icon("list"))
 })
+    
+    output$db_nzero <- renderValueBox({
+        
+        # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
+        db <- statement()
+        db <- db %>%
+            setNames(tolower(names(.))) %>%
+            mutate(valdata = as.Date(valdata, origin = "1900-01-01"))
+        
+        valueBox(
+            ifelse(input$idserie=="", "--", length(which(db$valvalor==0))),
+            tags$b("Valores zero"),
+            icon = icon("circle-o"), 
+            color = "yellow")
+    })
     
     output$db_missing <- renderValueBox({
         
@@ -422,7 +488,7 @@ output$plot_title <- renderText({
                                        # VALMISSING = ifelse(PERID==1, mondf(VALDATA[1], VALDATA[nrow(db)])-length(which(!is.na(db$VALVALOR)))+1, NA))
         
         valueBox(
-            ifelse(input$idserie=="", "Nenhum", db$VALMISSING[1]),
+            ifelse(input$idserie=="", "--", db$VALMISSING[1]),
             tags$b("Valores ausentes"), icon = icon("question"), color = "orange")
 
         })

@@ -52,10 +52,11 @@ dashboardPage(
       
       dashboardSidebar(
             width = 250,
-            sidebarMenu(id = "sbm",
+            sidebarMenu(id = "ipd",
                   menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
+                  menuItem("Séries Ipeadata", tabName = "seriesIpeadata", icon = icon("database")),
                   conditionalPanel(
-                      condition = "input.sbm == 'seriesExplorer'",
+                      condition = "input.ipd == 'seriesExplorer'",
                       selectInput("subject",
                                   "Tema",
                                   "",
@@ -110,7 +111,7 @@ dashboardPage(
                   #          # uiOutput("newinputs")
                   # ),
                   conditionalPanel(
-                        condition = "input.sbm == 'seriesExplorer' & input.subject == 'Regional' | input.subject == 'Social'",
+                        condition = "input.ipd == 'seriesExplorer' & input.subject == 'Regional' | input.subject == 'Social'",
                         # selectInput("geolevel", "Escolha o nível geográfico", 
                         #             choices = c("Brasil", "Regiões", "Estados", "Municípios")),
                         selectInput("geolevel", 
@@ -123,14 +124,14 @@ dashboardPage(
                                     "Escolha a abragência", 
                                     "",
                                     selected = "",
-                                    multiple = T),
-                        selectInput("time_start", "Início", 
-                                    choices = c(as.character(c(1970:2016)))),
-                        selectInput("time_end", "Fim", 
-                                    choices = c(as.character(c(1970:2016))))
+                                    multiple = T)
+                        # selectInput("time_start", "Início", 
+                        #             choices = c(as.character(c(1970:2016)))),
+                        # selectInput("time_end", "Fim", 
+                        #             choices = c(as.character(c(1970:2016))))
                   ),
                   menuItem("Explorar séries", tabName = "seriesExplorer", icon = icon("line-chart")),
-                  menuItem("Séries atrasadas", tabName = "lateseries", icon = icon("database")),
+                  menuItem("Séries atrasadas", tabName = "lateseries", icon = icon("table")),
                   menuItem("Github Repo", href="https://github.com/Ipeadata/shiny-app-validation", icon = icon("github")),
                   menuItem("Sobre", tabName = "about", icon = icon("info-circle"))
                   
@@ -144,16 +145,15 @@ dashboardPage(
                             column(width = 4, includeHTML("intro_logo.html"))
                         )
                         ),
-                tabItem(tabName = "seriesExplorer",
+                tabItem(tabName = "seriesIpeadata",
                         h2("Lista de séries disponíveis"),
                         fluidRow(
-                            box(
-                                title = "Tabela Teste",  
-                                width = 12,
+                            box(width = 12,
                                 status = "primary",
                                 DT::dataTableOutput("tb3")
-                            )
-                            ),
+                            ))
+                        ),
+                tabItem(tabName = "seriesExplorer",
                         h2("Metadados da série selecionada"),
                         fluidRow(
                             box(title = textOutput("plot_title2"),

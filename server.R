@@ -45,6 +45,7 @@ shinyServer(function(input, output, session) {
     statement <- reactive({
         if(!is.null(input$idserie))
             {
+            db_metadata <- sqlQuery(ipeadata, "select distinct SERCODIGOTROLL, SERLIBERADA from dbo.SERIES where SERLIBERADA=1")
             db_ter <- sqlQuery(ipeadata, "SELECT TERCODIBGE, TERNOME, TNIVID FROM dbo.TERRITORIO")
             db_nivel <- sqlQuery(ipeadata, "select TNIVID, TNIVNOME from TIPONIVEL")
             db_ter <- db_ter %>% 
@@ -58,19 +59,25 @@ shinyServer(function(input, output, session) {
                 #                                                            NA)))))) %>% 
                 data.frame
             
-            db_serie <- sqlQuery(ipeadata, sprintf("SELECT ipea.vw_Valor.SERCODIGO, ipea.vw_Valor.TERCODIGO,
-                    CAST (ipea.vw_Valor.VALDATA as NUMERIC) as VALDATA, ipea.vw_Valor.VALVALOR 
-                    FROM ipea.vw_Valor                    
-                    WHERE (((ipea.vw_Valor.SERCODIGO)='%s'))",
+            db_serie <- sqlQuery(ipeadata, 
+                    sprintf("SELECT ipea.vw_Valor.SERCODIGO, ipea.vw_Valor.TERCODIGO, dbo.SERIES.SERLIBERADA,
+                            CAST (ipea.vw_Valor.VALDATA as NUMERIC) as VALDATA, ipea.vw_Valor.VALVALOR 
+                            FROM ipea.vw_Valor                   
+                            INNER JOIN dbo.SERIES 
+                            ON ipea.vw_Valor.SERCODIGO = dbo.SERIES.SERCODIGOTROLL
+                            WHERE (((ipea.vw_Valor.SERCODIGO)='%s')) AND dbo.SERIES.SERLIBERADA=1", 
                                  input$idserie)) 
             
+            
             db_serie <- db_serie %>% 
-                tbl_df %>% 
-                # data.frame %>% 
-                mutate(TERCODIGO = as.character(TERCODIGO)) %>%
-                left_join(., db_ter, by = c("TERCODIGO" = "TERCODIBGE"))
+                    tbl_df %>% 
+                    # data.frame %>% 
+                    mutate(TERCODIGO = as.character(TERCODIGO)) %>%
+                    left_join(., db_ter, by = c("TERCODIGO" = "TERCODIBGE"))
             
             return(db_serie)
+            
+            
                 
             
             # sprintf("SELECT val.SERCODIGO, val.TERCODIGO, ter.TERCODIBGE, ter.TERNOME,
@@ -84,48 +91,61 @@ shinyServer(function(input, output, session) {
         })
     
     statement2 <- reactive({
-        db_metadata <- sqlQuery(ipeadata, "select distinct SERCODIGOTROLL, SERNOME_P, CATID, PERID, FNTID, UNIID, TEMID, SERMINDATA, SERMAXDATA from dbo.SERIES")
-        db_subject <- sqlQuery(ipeadata, "select CATID, CATNOME from CATALOGO")
-        db_source <- sqlQuery(ipeadata, "select FNTID, FNTNOME_P from FONTES")
-        db_period <- sqlQuery(ipeadata, "select PERID, PERNOME_P from PERIODICIDADES")
-        db_tert <- sqlQuery(ipeadata, "SELECT TERCODIBGE, TERNOME, TNIVID FROM dbo.TERRITORIO")
-        db_nivel <- sqlQuery(ipeadata, "select TNIVID, TNIVNOME from TIPONIVEL")
-        db_unid <- sqlQuery(ipeadata, "SELECT UNIID, UNINOME_P FROM UNIDADES")
-        db_cat <- sqlQuery(ipeadata, "SELECT * FROM CATALOGO")
-        db_tema <- sqlQuery(ipeadata, "SELECT TEMID, TEMNOME_P FROM TEMA")
-        db_tert <- db_tert %>% 
-            tbl_df %>%
-            left_join(., db_nivel) %>% 
-            # mutate(ID_GEOLEVEL = as.factor(ifelse(TNIVID==0, "Brasil",
-            #                             ifelse(TNIVID==1, "Regioes",
-            #                                    ifelse(TNIVID==2, "Estados",
-            #                                           ifelse(TNIVID==5, "Municipios", 
-            #                                                  NA)))))) %>% 
-            select(-TNIVID)
         
-        db_metadata %>% 
-            # tbl_df %>% 
-            left_join(., db_subject) %>% 
-            left_join(., db_source) %>% 
-            left_join(., db_period) %>% 
-            left_join(., db_unid) %>% 
-            left_join(., db_cat) %>% 
-            left_join(., db_tema)
-    })
+        db_metadata <- sqlQuery(ipeadata,
+                 "SELECT DISTINCT dbo.SERIES.SERCODIGOTROLL, dbo.SERIES.SERNOME_P, dbo.SERIES.CATID, 
+                dbo.SERIES.PERID, dbo.SERIES.FNTID, dbo.SERIES.UNIID, dbo.SERIES.TEMID, 
+                dbo.SERIES.SERMINDATA, dbo.SERIES.SERMAXDATA, CATALOGO.CATID, CATALOGO.CATNOME,
+                 FONTES.FNTID, FONTES.FNTNOME_P, PERIODICIDADES.PERID, PERIODICIDADES.PERNOME_P, 
+                UNIDADES.UNIID, UNIDADES.UNINOME_P, TEMA.TEMID, TEMA.TEMNOME_P
+                 FROM dbo.SERIES
+                 JOIN CATALOGO
+                        ON dbo.SERIES.CATID = CATALOGO.CATID
+                 JOIN FONTES
+                        ON dbo.SERIES.FNTID = FONTES.FNTID
+                 JOIN PERIODICIDADES
+                        ON dbo.SERIES.PERID = PERIODICIDADES.PERID
+                 JOIN UNIDADES
+                        ON dbo.SERIES.UNIID = UNIDADES.UNIID
+                 JOIN TEMA
+                        ON dbo.SERIES.TEMID = TEMA.TEMID
+                 WHERE SERLIBERADA=1")
+        
+        return(db_metadata)
+        })
+    
+    
+    # statement2 <- reactive({
+    #     db_metadata <- sqlQuery(ipeadata, "select distinct SERCODIGOTROLL, SERNOME_P, CATID, PERID, FNTID, UNIID, TEMID, SERMINDATA, SERMAXDATA from dbo.SERIES where SERLIBERADA=1")
+    #     db_subject <- sqlQuery(ipeadata, "select CATID, CATNOME from CATALOGO")
+    #     db_source <- sqlQuery(ipeadata, "select FNTID, FNTNOME_P from FONTES")
+    #     db_period <- sqlQuery(ipeadata, "select PERID, PERNOME_P from PERIODICIDADES")
+    #     # db_tert <- sqlQuery(ipeadata, "SELECT TERCODIBGE, TERNOME, TNIVID FROM dbo.TERRITORIO")
+    #     # db_nivel <- sqlQuery(ipeadata, "select TNIVID, TNIVNOME from TIPONIVEL")
+    #     db_unid <- sqlQuery(ipeadata, "SELECT UNIID, UNINOME_P FROM UNIDADES")
+    #     # db_cat <- sqlQuery(ipeadata, "SELECT * FROM CATALOGO")
+    #     db_tema <- sqlQuery(ipeadata, "SELECT TEMID, TEMNOME_P FROM TEMA")
+    #     # db_tert <- db_tert %>% 
+    #     #     tbl_df %>%
+    #     #     left_join(., db_nivel) %>% 
+    #     #     # mutate(ID_GEOLEVEL = as.factor(ifelse(TNIVID==0, "Brasil",
+    #     #     #                             ifelse(TNIVID==1, "Regioes",
+    #     #     #                                    ifelse(TNIVID==2, "Estados",
+    #     #     #                                           ifelse(TNIVID==5, "Municipios", 
+    #     #     #                                                  NA)))))) %>% 
+    #     #     select(-TNIVID)
+    #     
+    #     db_metadata %>% 
+    #         # tbl_df %>% 
+    #         left_join(., db_subject) %>% 
+    #         left_join(., db_source) %>% 
+    #         left_join(., db_period) %>% 
+    #         left_join(., db_unid) %>% 
+    #         left_join(., db_cat) %>% 
+    #         left_join(., db_tema)
+    # })
     
     #  and ipea.vw_Valor.VALVALOR IS NOT NULL
-    
-#     db_metadata <- function(){
-#           db_db_metadata <- sqlQuery(ipeadata, "select distinct SERCODIGOTROLL, CATID, PERID, FNTID from dbo.SERIES")
-#           db_subject <- sqlQuery(ipeadata, "select CATID, CATNOME from CATALOGO")
-#           db_source <- sqlQuery(ipeadata, "select FNTID, FNTNOME_P from FONTES")
-#           db_period <- sqlQuery(ipeadata, "select PERID, PERNOME_P from PERIODICIDADES")
-#           db_db_metadata <- db_db_metadata %>% 
-#                 tbl_df %>% 
-#                 left_join(., db_subject) %>% 
-#                 left_join(., db_source) %>% 
-#                 left_join(., db_period)
-#           }
     
     observe({
         # if(input$idserie==""){
@@ -366,7 +386,7 @@ output$db_metadata <- renderUI({
                 # db <- sqlQuery(channel = ipeadata, query = statement(), rows_at_time = 10)
         db <- statement()
         db <- db %>%
-            select(-TERCODIGO, -TNIVID, -TNIVNOME, -TERNOME) %>% 
+            select(-TERCODIGO, -TNIVID, -TNIVNOME, -TERNOME, -SERLIBERADA) %>% 
             mutate(VALDATA = as.Date(VALDATA, origin = "1900-01-01"))
         
         return(datatable(db, options = list(width = 12, pageLength = 12), 
@@ -385,7 +405,7 @@ output$db_metadata <- renderUI({
             db_geo <- statement()
             db_geo <- db_geo %>%
                 filter(TNIVNOME==input$geolevel, TERNOME %in% input$geoscope) %>%
-                select(-TERCODIGO, -TNIVID, -TNIVNOME, -TERNOME) %>% 
+                select(-TERCODIGO, -TNIVID, -TNIVNOME, -TERNOME, -SERLIBERADA) %>% 
                 mutate(VALDATA = as.Date(VALDATA, origin = "1900-01-01"))
             return(datatable(db_geo, options = list(width = 12, 
                                                     pageLength = 12,
@@ -410,18 +430,19 @@ output$db_metadata <- renderUI({
         return(datatable(db, options = list(width = 12, 
                                             search = list(caseInsensitive = T,
                                                           regex = T),
-                                            pageLength = 20,
+                                            pageLength = 10,
                                             language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')), 
                          rownames= FALSE, 
                          plugins = 'natural',
-                         filter = list(position = 'top', clear = TRUE),
+                         # filter = list(position = 'top', clear = TRUE),
                          selection = "single") %>% formatStyle(1, cursor = 'pointer'))
         })
     
-    observeEvent(input$tb3_cell_clicked, {
+    observeEvent(input$explore, # input$tb3_cell_clicked, 
+                 {
         # db_metadata <- sqlQuery(ipeadata, "select distinct SERCODIGOTROLL, SERNOME_P, CATID, PERID, FNTID, UNIID from dbo.SERIES")
         info <- input$tb3_cell_clicked
-        # serieSubject <- statement2()$CATNOME[statement2()$SERNOME_P==info$value]
+        serieSubject <- statement2()$CATNOME[statement2()$SERNOME_P==info$value]
         # serieSrc <- statement2()$FNTNOME_P[statement2()$SERNOME_P==info$value]
         # serieFreq <- statement2()$PERNOME_P[statement2()$SERNOME_P==info$value]
         serieName <- statement2()$SERCODIGOTROLL[statement2()$SERNOME_P==info$value]
@@ -430,8 +451,28 @@ output$db_metadata <- renderUI({
 
         if (is.null(info$value) || info$col != 0) 
             return()
+        
         updateTabItems(session, 'ipd', selected = 'seriesExplorer')
-        # updateSelectInput(session, 'subject', label = "Tema", choices = levels(statement2()$CATNOME), selected = serieSubject)
+
+        # withProgress(message = "Preparando relatório", detail = "Selecionando dados", value = 0, {
+        # 
+        #     Sys.sleep(0.5)
+        # 
+        #     incProgress(0.25, detail = "Verificando consistência")
+        # 
+        #     # Perform lots of calculations that may take some time
+        #     Sys.sleep(0.5)
+        # 
+        #     incProgress(0.25, detail = "Preparando visualização")
+        # 
+        #     Sys.sleep(0.5)
+        # 
+        #     incProgress(0.25, detail = "Finalizando exibição")
+        # 
+        #     Sys.sleep(0.25)
+        # })
+        
+        updateSelectInput(session, 'subject', label = "Tema", choices = levels(statement2()$CATNOME), selected = serieSubject)
         # updateSelectInput(session, 'src', label = "Fonte", choices = levels(db_metadata2$FNTNOME_P), selected = serieSrc)
         # updateSelectInput(session, 'period', label = "Periodicidade", choices = levels(db_metadata3$PERNOME_P), selected = serieFreq)
         updateSelectInput(session, 'idserie', label = "ID da série", choices = levels(statement2()$SERCODIGOTROLL), selected = serieName)

@@ -2,7 +2,7 @@
 ## LOAD PACKAGES
 ##==============================================================================
 if (!require("install.load")) install.packages("install.load")
-install.load::install_load("tidyverse", "stringr", "RODBC", "DT", "xts", "shinydashboard", "shiny", "dygraphs", "leaflet")
+install.load::install_load("tidyverse", "stringr", "RODBC", "DT", "xts", "shinydashboard", "shinyBS", "shiny", "dygraphs", "leaflet")
 
 ##==============================================================================
 ## CONNECT TO IPEADATA DATABASE AND RUN SOME QUERIES
@@ -111,7 +111,7 @@ dashboardPage(
                   #          # uiOutput("newinputs")
                   # ),
                   conditionalPanel(
-                        condition = "input.ipd == 'seriesExplorer' & input.subject == 'Regional' | input.subject == 'Social'",
+                        condition = "input.ipd == 'seriesExplorer' & input.idserie!='' & (input.subject == 'Regional' | input.subject == 'Social')",
                         # selectInput("geolevel", "Escolha o nível geográfico", 
                         #             choices = c("Brasil", "Regiões", "Estados", "Municípios")),
                         selectInput("geolevel", 
@@ -120,6 +120,7 @@ dashboardPage(
                                     selected = "",
                                     multiple = F),
                                     # choices = c("Brasil", "Regiões", "Estados", "Municípios")),
+                        bsTooltip("geolevel", title = "Escolha o nível geográfico", placement = "top"),
                         selectInput("geoscope", 
                                     "Escolha a abragência", 
                                     "",
@@ -150,8 +151,9 @@ dashboardPage(
                         fluidRow(
                             box(width = 12,
                                 status = "primary",
-                                DT::dataTableOutput("tb3")
-                            ))
+                                DT::dataTableOutput("tb3")),
+                            bsButton("explore", "Explorar série", blocK = F, style = "primary", icon = icon("paper-plane")),
+                            bsTooltip(id = "explore", title = "Clique para verificar status da série", placement = "right", trigger = "hover"))
                         ),
                 tabItem(tabName = "seriesExplorer",
                         h2("Metadados da série selecionada"),

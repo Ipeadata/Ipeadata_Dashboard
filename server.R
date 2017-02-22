@@ -93,7 +93,7 @@ shinyServer(function(input, output, session) {
     statement2 <- reactive({
         
         db_metadata <- sqlQuery(ipeadata,
-                 "SELECT DISTINCT dbo.SERIES.SERCODIGOTROLL, dbo.SERIES.SERNOME_P, dbo.SERIES.CATID, 
+                 "SELECT DISTINCT dbo.SERIES.SERID, dbo.SERIES.SERCODIGOTROLL, dbo.SERIES.SERNOME_P, dbo.SERIES.CATID, 
                 dbo.SERIES.PERID, dbo.SERIES.FNTID, dbo.SERIES.UNIID, dbo.SERIES.TEMID, 
                 dbo.SERIES.SERMINDATA, dbo.SERIES.SERMAXDATA, CATALOGO.CATID, CATALOGO.CATNOME,
                  FONTES.FNTID, FONTES.FNTNOME_P, PERIODICIDADES.PERID, PERIODICIDADES.PERNOME_P, 
@@ -287,7 +287,7 @@ output$plot_title2 <- renderText({
 
 output$db_metadata <- renderUI({ 
     
-    db_descr <- sqlQuery(channel = ipeadata, sprintf("SELECT SERNOTAMETOD_P FROM SERIES WHERE SERCODIGOTROLL='%s';", input$idserie))
+    db_descr <- sqlQuery(channel = ipeadata, sprintf("SELECT SERNOTAMETOD_P, SERMINDATA, SERMAXDATA FROM SERIES WHERE SERCODIGOTROLL='%s';", input$idserie))
     db_source <- as.character(statement2()$FNTNOME_P[statement2()$SERCODIGOTROLL==input$idserie])
     db_period <- as.character(statement2()$PERNOME_P[statement2()$SERCODIGOTROLL==input$idserie])
     db_atual <- sqlQuery(channel = ipeadata, sprintf("SELECT SERATUALIZACAO
@@ -296,9 +296,12 @@ output$db_metadata <- renderUI({
     # db_unid <- sqlQuery(channel = ipeadata, sprintf("SELECT UNIID FROM SERIES WHERE SERCODIGOTROLL='%s';", "ANP_XPET"))
     # db_unid <- sqlQuery(channel = ipeadata, "SELECT UNINOME_P FROM UNIDADES WHERE UNIID='%int';", as.factor(db_unid$UNIID))
 
+    period <- paste(str_sub(db_descr$SERMINDATA, 1, 4), str_sub(db_descr$SERMAXDATA, 1, 4), sep = "-")
+    
     # ifelse(input$idserie=="",
            # "Selecione uma série histórica",
            HTML(paste(paste(strong("Frequência:"), db_period),
+                      paste(strong("Período:"), period),
                       paste(strong("Fonte:"), db_source), 
                       # paste(strong("Unidade:"), db_unid$UNINOME_P), 
                       paste(strong("Comentário:"), db_descr$SERNOTAMETOD_P),
@@ -306,10 +309,6 @@ output$db_metadata <- renderUI({
                       sep = "<br/>"))
     
 })
-
-# https://github.com/MarkEdmondson1234/ga-dashboard-demo/blob/master/ui.R
-# https://mark.shinyapps.io/GA-dashboard-demo/
-
 
     output$table_title <- renderText({ 
           
@@ -389,7 +388,7 @@ output$db_metadata <- renderUI({
             select(-TERCODIGO, -TNIVID, -TNIVNOME, -TERNOME, -SERLIBERADA) %>% 
             mutate(VALDATA = as.Date(VALDATA, origin = "1900-01-01"))
         
-        return(datatable(db, options = list(width = 12, pageLength = 12), 
+        return(datatable(db, options = list(width = 12, pageLength = 12, order = list(list(1, "desc"))), 
                          rownames= FALSE, filter = "bottom"))
         
           }
@@ -410,22 +409,17 @@ output$db_metadata <- renderUI({
             return(datatable(db_geo, options = list(width = 12, 
                                                     pageLength = 12,
                                                     search = list(caseInsensitive = TRUE),
+                                                    order = list(list(1, "desc")),
                                                     language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')), rownames= FALSE, filter = 'top'))
             }
         })
     
     output$tb3 <- DT::renderDataTable({
         # options(DT.options = list(pageLength = 5, language = list(search = 'Filter:')))
-        # Nome da série, Unidade, Freq., Período
-        # db_metadata <- sqlQuery(ipeadata, "select distinct SERCODIGOTROLL, SERNOME_P, CATID, PERID, FNTID, UNIID, SERMINDATA, SERMAXDATA from dbo.SERIES")
-        # db_unid <- sqlQuery(ipeadata, "SELECT UNIID, UNINOME_P FROM UNIDADES")
-        # db_period <- sqlQuery(ipeadata, "select PERID, PERNOME_P from PERIODICIDADES")
+        
         db <- statement2() %>% 
-            # tbl_df %>% 
-            # left_join(., db_unid) %>% 
-            # left_join(., db_period) %>% 
             mutate(Período = paste(str_sub(SERMINDATA, 1, 4), str_sub(SERMAXDATA, 1, 4), sep = "-")) %>% 
-            select(Nome = SERNOME_P, Tema = CATNOME, Subtema = TEMNOME_P, Unidade = UNINOME_P, Periodicidade = PERNOME_P, Período) %>% 
+            select(ID = SERID, Nome = SERNOME_P, Tema = CATNOME, Subtema = TEMNOME_P, Unidade = UNINOME_P, Periodicidade = PERNOME_P, Período) %>% 
             arrange(Nome)
         return(datatable(db, options = list(width = 12, 
                                             search = list(caseInsensitive = T,
@@ -435,17 +429,18 @@ output$db_metadata <- renderUI({
                          rownames= FALSE, 
                          plugins = 'natural',
                          # filter = list(position = 'top', clear = TRUE),
-                         selection = "single") %>% formatStyle(1, cursor = 'pointer'))
+                         selection = "single") %>% 
+                   formatStyle(1, cursor = 'pointer', fontWeight = 'bold'))
         })
     
     observeEvent(input$explore, # input$tb3_cell_clicked, 
                  {
         # db_metadata <- sqlQuery(ipeadata, "select distinct SERCODIGOTROLL, SERNOME_P, CATID, PERID, FNTID, UNIID from dbo.SERIES")
         info <- input$tb3_cell_clicked
-        serieSubject <- statement2()$CATNOME[statement2()$SERNOME_P==info$value]
+        serieSubject <- statement2()$CATNOME[statement2()$SERID==info$value]
         # serieSrc <- statement2()$FNTNOME_P[statement2()$SERNOME_P==info$value]
         # serieFreq <- statement2()$PERNOME_P[statement2()$SERNOME_P==info$value]
-        serieName <- statement2()$SERCODIGOTROLL[statement2()$SERNOME_P==info$value]
+        serieName <- statement2()$SERCODIGOTROLL[statement2()$SERID==info$value ]
         # db_metadata2 <- droplevels(subset(statement2(), grepl(input$subject, statement2()$CATNOME)))
         # db_metadata3 <- droplevels(subset(statement2(), grepl(input$subject, statement2()$CATNOME) & grepl(input$src, statement2()$FNTNOME_P)))
 
